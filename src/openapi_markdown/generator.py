@@ -77,7 +77,8 @@ def to_markdown(api_file, output_file, templates_dir='templates', options={}):
     rendered_template = (
         template.render(spec=spec,
                         ref_to_param=lambda ref: ref_to_param(ref, spec_data),
-                        ref_to_schema=lambda ref: ref_to_schema(ref, spec_data))
+                        ref_to_schema=lambda ref: ref_to_schema(ref, spec_data),
+                        ref_to_link=lambda ref: ref_to_link(ref))
     )
     with open(output_file, "w") as f:
         f.write(rendered_template)

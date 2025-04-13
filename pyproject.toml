@@ -5,9 +5,10 @@ build-backend = "hatchling.build"
 
 [project]
 name = "openapi-markdown"
-version = "0.4.3"
+version = "0.4.4-alpha"
 authors = [
     { name="soonoh", email="soonoh.jung@vrerv.com" },
+    { name="nsayapin", email="nsajapin@gmail.com" },
 ]
 description = "Generates API documentation from an OpenAPI specification file"
 readme = "README.md"
