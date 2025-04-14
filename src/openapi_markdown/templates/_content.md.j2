@@ -4,7 +4,7 @@
 
 {% set schema = item.schema -%}
 
-{{ schema | ref_to_link }}
+{{ schema | ref_to_link(prefix) }}
 
 {% if schema %}
 {% include './_object_schema.md.j2' %}

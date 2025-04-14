@@ -11,12 +11,14 @@ def to_json(value):
     return json.dumps(value, indent=2)
 
 
-def ref_to_link(ref):
+def ref_to_link(ref, prefix):
     if not ref:
         return ""
     if ref.get('$ref'):
         parts = ref['$ref'].split("/")
         schema_name = parts[-1]
+        if prefix:
+            return f"[{schema_name}](#{prefix}-{schema_name})"
         return f"[{schema_name}](#{schema_name.lower()})"
     elif ref.get('type'):
         return f"{ref['type']}"
@@ -63,6 +65,12 @@ def to_markdown(api_file, output_file, templates_dir='templates', options={}):
             k: v for k, v in spec_data['paths'].items()
             if any(k.startswith(prefix) for prefix in options['filter_paths'])
         }
+    # Getting prefix in documentation
+    if 'prefix' in options and options['prefix']:
+        prefix = options['prefix']
+    else:
+        prefix = ''
+
     spec = Spec.from_dict(spec_data)
     # Load the Jinja2 template file
     if os.path.exists(templates_dir):
@@ -78,7 +86,8 @@ def to_markdown(api_file, output_file, templates_dir='templates', options={}):
         template.render(spec=spec,
                         ref_to_param=lambda ref: ref_to_param(ref, spec_data),
                         ref_to_schema=lambda ref: ref_to_schema(ref, spec_data),
-                        ref_to_link=lambda ref: ref_to_link(ref))
+                        ref_to_link=lambda ref,prefix: ref_to_link(ref, prefix),
+                        prefix=prefix)
     )
     with open(output_file, "w") as f:
         f.write(rendered_template)
