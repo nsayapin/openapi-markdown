@@ -41,7 +41,7 @@
 |------|------|----------|-------------|
 {% for param in operation.parameters -%}
 {% set param_obj = ref_to_schema(param) -%}
-| {{ param_obj.name }} | {{ param_obj.schema.type }} | {{ param_obj.required }} | {{ param_obj.description }} |
+| {{ param_obj.name }} | {{ param_obj.schema.type }}{{'(' + param_obj.schema.maxLength|string + ')' if param_obj.schema.maxLength else ''}} | {{ param_obj.required }} | {{ param_obj.description }} |
 {% endfor -%}
 {% endif %}
 
