@@ -5,7 +5,7 @@ import yaml
 from jinja2 import Environment, FileSystemLoader, PackageLoader
 from openapi_core import Spec
 from warnings import warn
-
+from collections import Iterable
 
 def to_json(value):
     return json.dumps(value, indent=2)
@@ -24,6 +24,25 @@ def ref_to_link(ref, prefix):
         return f"{ref['type']}"
     return ""
 
+def ref_to_type(ref, spec_data):
+    if isinstance(ref.get('type'),list) and not isinstance(ref.get('type'),str):
+        val = '['
+        for type in ref.get('type'):
+            if isinstance(type,str):
+                val = val + type
+#                 Добавляем maxLength для string
+                if ref.get('maxLength') and type == 'string':
+                    val = val + '(' + ref.get('maxLength') + ')'
+#                 Запятая между элементами, если это не последний
+                if type != ref.get('type')[-1]:
+                    val = val+ ','
+        val = val+ ']'
+        return val
+    else:
+        if ref.get('maxLength') and ref.get('type') == 'string':
+            return ref.get('type') + '(' + str(ref.get('maxLength')) + ')'
+        else:
+            return ref.get('type')
 
 def ref_to_param(ref, spec_data):
     warn('ref_to_param is deprecated. Use ref_to_schema directly.', DeprecationWarning,
@@ -81,13 +100,16 @@ def to_markdown(api_file, output_file, templates_dir='templates', options={}):
     env.filters['to_json'] = to_json
     env.filters['ref_to_param'] = ref_to_param
     env.filters['ref_to_schema'] = ref_to_schema
+    env.filters['ref_to_type'] = ref_to_type
     template = env.get_template('api_doc_template.md.j2')
     rendered_template = (
         template.render(spec=spec,
                         ref_to_param=lambda ref: ref_to_param(ref, spec_data),
                         ref_to_schema=lambda ref: ref_to_schema(ref, spec_data),
                         ref_to_link=lambda ref,prefix: ref_to_link(ref, prefix),
+                        ref_to_type=lambda ref,prefix: ref_to_type(ref, prefix),
                         prefix=prefix)
     )
     with open(output_file, "w") as f:
         f.write(rendered_template)
+

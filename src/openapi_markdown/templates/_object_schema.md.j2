@@ -3,6 +3,6 @@
 | Field | Type | Description |
 |-------|------|-------------|
 {% for property_name, property in schema.properties.items() -%}
-| {{ property_name }} | {{ property.type if property.type }}{{ ref_to_link(property, prefix) if property['$ref'] }}{{'(' + property.maxLength|string + ')' if property.maxLength else ''}} | {{ property.description if property.description else '' }} |
+| {{ property_name }}| {{ ref_to_link(property, prefix) if property['$ref'] }} {{ref_to_type(property, prefix)}} | {{ property.description if property.description else '' }} |
 {% endfor -%}
 {% endif -%}
