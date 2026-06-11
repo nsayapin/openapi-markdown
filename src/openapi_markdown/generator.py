@@ -15,34 +15,82 @@ def ref_to_link(ref, prefix):
     if not ref:
         return ""
     if ref.get('$ref'):
-        parts = ref['$ref'].split("/")
-        schema_name = parts[-1]
-        if prefix:
-            return f"[{schema_name}](#{prefix}-{schema_name})"
-        return f"[{schema_name}](#{schema_name.lower()})"
+        return get_ref_schema_name(ref, prefix)
     elif ref.get('type'):
         return f"{ref['type']}"
     return ""
 
-def ref_to_type(ref, spec_data):
+def ref_to_type(ref, prefix):
     if isinstance(ref.get('type'),list) and not isinstance(ref.get('type'),str):
         val = '['
         for type in ref.get('type'):
             if isinstance(type,str):
                 val = val + type
 #                 Добавляем maxLength для string
-                if ref.get('maxLength') and type == 'string':
-                    val = val + '(' + ref.get('maxLength') + ')'
+                #TODO
+                if ref.get('maxLength') and type=='number' and ref.get('multipleOf'):
+                    maxLength = ref.get('maxLength')
+                    multipleOfLength = count_places(ref.get('multipleOf'))
+                    intPartLength = maxLength - multipleOfLength - 1
+                    val = str(val) +  '(' + str(intPartLength) + ',' + str(multipleOfLength) + ')'
+                elif ref.get('maxLength') and (type == 'string' or type == 'number'):
+                    val = str(val) + '(' + str(ref.get('maxLength')) + ')'
 #                 Запятая между элементами, если это не последний
                 if type != ref.get('type')[-1]:
                     val = val+ ','
         val = val+ ']'
         return val
+#         Если указан тип oneOf
+    elif ref.get('oneOf'):
+        val = '['
+        for type in ref.get('oneOf'):
+            if type.get('$ref'):
+                refname = get_ref_schema_name(type, prefix)
+                val = val + refname
+#                 if prefix:
+#                     val = val +  f"[{schema_name}](#{prefix}-{schema_name})"
+#                 else:
+#                     val = val +  f"[{schema_name}](#{schema_name.lower()})"
+            elif type.get('type'):
+                typeVal = type.get('type')
+                # type = string
+                if ref.get('maxLength') and ref.get('type') == 'string':
+                    val = val + str(typeVal) + '(' + str(ref.get('maxLength')) + ')'
+                # type = multipleOf
+                elif ref.get('type') == 'number' and ref.get('multipleOf'):
+                    maxLength = ref.get('maxLength')
+                    multipleOfLength = count_places(ref.get('multipleOf'))
+                    intPartLength = maxLength - multipleOfLength - 1
+                    val = val + str(typeVal) + '(' + str(intPartLength) + ',' + str(multipleOfLength) + ')'
+                else:
+                    val = val + str(typeVal)
+            if type != ref.get('oneOf')[-1]:
+                val = val+ ','
+        val = val+ ']'
+        return val
     else:
-        if ref.get('maxLength') and ref.get('type') == 'string':
+        if ref.get('type')=='array':
+            refname = get_ref_schema_name(ref.get('items'), prefix)
+            return ref.get('type') +  '(' + refname + ')'
+        if ref.get('type') == 'number' and ref.get('multipleOf'):
+            maxLength = ref.get('maxLength')
+            multipleOfLength = count_places(ref.get('multipleOf'))
+            intPartLength = maxLength - multipleOfLength - 1
+            return ref.get('type')  + '(' + str(intPartLength) + ',' + str(multipleOfLength) + ')'
+        if ref.get('maxLength'):
             return ref.get('type') + '(' + str(ref.get('maxLength')) + ')'
+        elif ref.get('type') == 'array':
+            return ref.get('type')
         else:
             return ref.get('type')
+
+def get_ref_schema_name(ref, prefix):
+    parts = ref['$ref'].split("/")
+    schema_name = parts[-1]
+    if prefix:
+        return f"[{schema_name}](#{prefix}-{schema_name})"
+    return f"[{schema_name}](#{schema_name.lower()})"
+
 
 def ref_to_param(ref, spec_data):
     warn('ref_to_param is deprecated. Use ref_to_schema directly.', DeprecationWarning,
@@ -108,8 +156,31 @@ def to_markdown(api_file, output_file, templates_dir='templates', options={}):
                         ref_to_schema=lambda ref: ref_to_schema(ref, spec_data),
                         ref_to_link=lambda ref,prefix: ref_to_link(ref, prefix),
                         ref_to_type=lambda ref,prefix: ref_to_type(ref, prefix),
+                        get_schema_type=lambda ref,prefix: get_schema_type(ref, prefix), # Получение схемы типа
                         prefix=prefix)
     )
     with open(output_file, "w") as f:
         f.write(rendered_template)
 
+# Количество символов после запятой в multipleOf
+def count_places(number):
+    num_str = str(number)  # Переводим в строку
+    if '.' in num_str:
+        return len(num_str.split('.')[1])  # Считаем длину после точки
+    return 0
+
+#  Осуществляет получение типа схемы
+def get_schema_type(ref, spec_data):
+    schema = ref.get('schema')
+    # первая часть значений - тип
+    returnValue = schema.get('type')
+    # Если есть maxLength и multipleOf
+    if schema.get('maxLength') and schema.get('multipleOf'):
+        maxLength = schema.get('maxLength')
+        multipleOfLength = count_places(schema.get('multipleOf'))
+        intPartLength = maxLength - multipleOfLength - 1
+        returnValue +=  '(' + str(intPartLength) + ',' + str(multipleOfLength) + ')'
+    # Если есть только maxLength строковый
+    elif schema.get('maxLength'):
+        returnValue += '(' + str(schema.get('maxLength')) + ')'
+    return returnValue
